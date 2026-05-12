@@ -13,7 +13,8 @@ pnpm-debug.log*
 
 # ---- Environment / Secrets ----
 .env
-.env.*
+.env.local
+.env.*.local
 
 # ---- Python (backend) ----
 __pycache__/

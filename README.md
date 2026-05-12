@@ -1,9 +1,18 @@
+<div align="center">
+
 # 🦙 Ollama Chat
 
-A full-stack, self-hosted LLM chat app powered by local Ollama models.  
-**Auth** → Clerk · **Backend** → FastAPI · **Frontend** → Next.js 15 + TypeScript + Tailwind · **DB** → PostgreSQL
+A full-stack, self-hosted LLM chat app powered by local Ollama models.
 
----
+<p>
+  <img src="https://img.shields.io/badge/Next.js-15-black?style=for-the-badge&logo=nextdotjs" alt="Next.js" />
+  <img src="https://img.shields.io/badge/FastAPI-Backend-009688?style=for-the-badge&logo=fastapi" alt="FastAPI" />
+  <img src="https://img.shields.io/badge/PostgreSQL-Database-4169E1?style=for-the-badge&logo=postgresql" alt="PostgreSQL" />
+  <img src="https://img.shields.io/badge/Ollama-Local%20LLM-000000?style=for-the-badge" alt="Ollama" />
+  <img src="https://img.shields.io/badge/Clerk-Auth-6C47FF?style=for-the-badge&logo=clerk" alt="Clerk" />
+</p>
+
+</div>
 
 ## Architecture
 
@@ -62,20 +71,20 @@ sudo -u postgres psql
 Inside the `psql` prompt:
 
 ```sql
-CREATE USER ollama_chat_user WITH PASSWORD 'your_password';
-CREATE DATABASE ollama_chat OWNER ollama_chat_user;
-GRANT ALL PRIVILEGES ON DATABASE ollama_chat TO ollama_chat_user;
+CREATE USER dev WITH PASSWORD 'your_password';
+CREATE DATABASE ollama_chat OWNER dev;
+GRANT ALL PRIVILEGES ON DATABASE ollama_chat TO dev;
 
 \c ollama_chat
 
-GRANT ALL ON SCHEMA public TO ollama_chat_user;
-GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO ollama_chat_user;
-GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO ollama_chat_user;
+GRANT ALL ON SCHEMA public TO dev;
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO dev;
+GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO dev;
 
 ALTER DEFAULT PRIVILEGES IN SCHEMA public
-    GRANT ALL ON TABLES TO ollama_chat_user;
+    GRANT ALL ON TABLES TO dev;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public
-    GRANT ALL ON SEQUENCES TO ollama_chat_user;
+    GRANT ALL ON SEQUENCES TO dev;
 ```
 
 Exit `psql` with:
@@ -96,14 +105,14 @@ Exit `psql` with:
 ```bash
 cd backend
 cp .env.example .env          # fill in your values
-python -m venv .venv
+python3 -m venv .venv
 source .venv/bin/activate     # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 uvicorn app.main:app --reload --port 8000
 ```
 
 Backend runs at **http://localhost:8000**  
-Interactive docs: **http://localhost:8000/docs**
+Interactive docs (Swagger UI): **http://localhost:8000/docs**
 
 ### 5 — Frontend
 

@@ -144,7 +144,7 @@ export default function ChatWindow({
     return (
       <div className="flex-1 flex flex-col justify-center px-6">
         <div className="w-full max-w-3xl mx-auto">
-          <p className="text-center text-sm text-ink-secondary mb-4">Start a conversation</p>
+          <p className="text-center text-2xl text-black font-bold mb-4">Start a conversation</p>
           {renderComposer()}
         </div>
       </div>

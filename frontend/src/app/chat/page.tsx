@@ -11,9 +11,16 @@ import {
   fetchChat,
   fetchChats,
   fetchModels,
+  importChat,
   sendMessage,
 } from "@/lib/api";
-import type { Chat, ChatListItem, Message } from "@/types";
+import type {
+  Chat,
+  ChatListItem,
+  ExportedChatEnvelope,
+  ImportChatPayload,
+  Message,
+} from "@/types";
 
 export default function ChatPage() {
   const { getToken } = useAuth();
@@ -112,6 +119,105 @@ export default function ChatPage() {
     [activeChatId, token]
   );
 
+  const handleExportChat = useCallback(
+    async (id: string) => {
+      try {
+        const t = await token();
+        const chat = await fetchChat(t, id);
+        const payload: ExportedChatEnvelope = {
+          version: 1,
+          exported_at: new Date().toISOString(),
+          chat: {
+            title: chat.title,
+            model: chat.model,
+            messages: chat.messages.map((msg) => ({
+              role: msg.role,
+              content: msg.content,
+              created_at: msg.created_at,
+            })),
+          },
+        };
+
+        const safeTitle = chat.title
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/(^-|-$)/g, "");
+        const filename = safeTitle
+          ? `chat-${safeTitle}.json`
+          : `chat-${Date.now()}.json`;
+
+        const blob = new Blob([JSON.stringify(payload, null, 2)], {
+          type: "application/json",
+        });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(url);
+      } catch (err) {
+        console.error("Failed to export chat:", err);
+      }
+    },
+    [token]
+  );
+
+  const handleImportChat = useCallback(
+    async (file: File) => {
+      try {
+        const raw = JSON.parse(await file.text()) as
+          | ExportedChatEnvelope
+          | ImportChatPayload;
+
+        const base =
+          "chat" in raw && raw.chat && typeof raw.chat === "object"
+            ? raw.chat
+            : raw;
+
+        const title =
+          typeof base.title === "string" && base.title.trim().length > 0
+            ? base.title
+            : "Imported Chat";
+        const model =
+          typeof base.model === "string" && base.model.trim().length > 0
+            ? base.model
+            : selectedModel;
+        const messages = Array.isArray(base.messages)
+          ? base.messages
+              .map((msg) => ({
+                role: msg.role,
+                content: msg.content,
+                created_at: msg.created_at,
+              }))
+              .filter(
+                (msg) =>
+                  (msg.role === "user" || msg.role === "assistant") &&
+                  typeof msg.content === "string" &&
+                  msg.content.trim().length > 0
+              )
+          : [];
+
+        const payload: ImportChatPayload = {
+          title,
+          model,
+          messages,
+        };
+
+        const t = await token();
+        const imported = await importChat(t, payload);
+        setChats((prev) => [imported, ...prev]);
+        setActiveChatId(imported.id);
+        setMessages(imported.messages);
+        setSelectedModel(imported.model);
+      } catch (err) {
+        console.error("Failed to import chat:", err);
+      }
+    },
+    [selectedModel, token]
+  );
+
   // ── Send message ───────────────────────────────────────────────────────────
   const handleSend = useCallback(
     async (content: string) => {
@@ -193,6 +299,7 @@ export default function ChatPage() {
         onSelectChat={handleSelectChat}
         onNewChat={handleNewChat}
         onDeleteChat={handleDeleteChat}
+        onExportChat={handleExportChat}
         onModelChange={setSelectedModel}
         onSignOut={handleSignOut}
       />
@@ -215,6 +322,7 @@ export default function ChatPage() {
           streamingContent={streamingContent}
           ollamaStatus={ollamaStatus}
           onSend={handleSend}
+          onImportChat={handleImportChat}
         />
       </main>
     </div>

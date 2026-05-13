@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ArrowUp } from "lucide-react";
+import { ArrowUp, Plus } from "lucide-react";
 import MessageBubble from "./MessageBubble";
 import { cn } from "@/lib/utils";
 import type { Message } from "@/types";
@@ -14,6 +14,7 @@ interface ChatWindowProps {
   streamingContent: string;
   ollamaStatus: "checking" | "online" | "offline";
   onSend: (content: string) => void;
+  onImportChat: (file: File) => void;
 }
 
 export default function ChatWindow({
@@ -24,10 +25,12 @@ export default function ChatWindow({
   streamingContent,
   ollamaStatus,
   onSend,
+  onImportChat,
 }: ChatWindowProps) {
   const [input, setInput] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Auto-scroll on new messages
   useEffect(() => {
@@ -62,6 +65,8 @@ export default function ChatWindow({
     !isLoading &&
     ollamaStatus !== "offline" &&
     !!chatId;
+
+  const canImport = !isStreaming && !isLoading;
 
   const showCenteredComposer = !!chatId && messages.length === 0 && !isStreaming && !isLoading;
 
@@ -98,6 +103,30 @@ export default function ChatWindow({
           rows={1}
           className="flex-1 resize-none bg-transparent text-sm text-ink placeholder:text-ink-ghost focus:outline-none min-h-[22px] max-h-[160px] leading-[22px] disabled:opacity-50"
         />
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="application/json"
+          className="hidden"
+          onChange={(event) => {
+            const file = event.target.files?.[0];
+            if (file) onImportChat(file);
+            event.target.value = "";
+          }}
+        />
+        <button
+          onClick={() => fileInputRef.current?.click()}
+          disabled={!canImport}
+          aria-label="Import chat"
+          className={cn(
+            "flex-shrink-0 w-8 h-8 rounded-xl flex items-center justify-center transition-all",
+            canImport
+              ? "bg-surface-muted text-ink hover:bg-surface-border"
+              : "bg-surface-muted text-ink-ghost cursor-not-allowed"
+          )}
+        >
+          <Plus size={14} strokeWidth={2.5} />
+        </button>
         <button
           onClick={handleSubmit}
           disabled={!canSend}

@@ -19,6 +19,24 @@ export interface Chat extends ChatListItem {
   messages: Message[];
 }
 
+export interface ImportMessage {
+  role: "user" | "assistant";
+  content: string;
+  created_at?: string;
+}
+
+export interface ImportChatPayload {
+  title?: string;
+  model?: string;
+  messages?: ImportMessage[];
+}
+
+export interface ExportedChatEnvelope {
+  version: number;
+  exported_at: string;
+  chat: ImportChatPayload;
+}
+
 export interface StreamChunk {
   content?: string;
   done?: boolean;

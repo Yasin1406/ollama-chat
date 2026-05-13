@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import List
 from uuid import UUID
 
@@ -6,8 +7,14 @@ from sqlalchemy.orm import Session
 
 from ..database import get_db
 from ..middleware.clerk_auth import get_current_user
-from ..models.chat import Chat
-from ..schemas.chat import ChatCreate, ChatDetail, ChatListItem
+from ..models.chat import Chat, Message
+from ..schemas.chat import (
+    ChatCreate,
+    ChatDetail,
+    ChatListItem,
+    ImportChat,
+    ImportChatPayload,
+)
 
 router = APIRouter(prefix="/chats", tags=["chats"])
 
@@ -39,6 +46,45 @@ async def create_chat(
         model=payload.model or "llama3.2",
     )
     db.add(chat)
+    db.commit()
+    db.refresh(chat)
+    return chat
+
+
+@router.post("/import", response_model=ChatDetail, status_code=201)
+async def import_chat(
+    payload: ImportChatPayload,
+    db: Session = Depends(get_db),
+    user_id: str = Depends(get_current_user),
+):
+    data = payload.chat or ImportChat(
+        title=payload.title or "Imported Chat",
+        model=payload.model or "llama3.2",
+        messages=payload.messages,
+    )
+
+    chat = Chat(
+        user_id=user_id,
+        title=data.title or "Imported Chat",
+        model=data.model or "llama3.2",
+    )
+    db.add(chat)
+    db.flush()
+
+    now = datetime.utcnow()
+    messages = [
+        Message(
+            chat_id=chat.id,
+            role=msg.role,
+            content=msg.content,
+            created_at=msg.created_at or now,
+        )
+        for msg in data.messages
+    ]
+    if messages:
+        db.add_all(messages)
+        chat.updated_at = max((msg.created_at or now for msg in messages))
+
     db.commit()
     db.refresh(chat)
     return chat

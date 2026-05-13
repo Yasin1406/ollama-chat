@@ -1,4 +1,4 @@
-import type { Chat, ChatListItem, StreamChunk } from "@/types";
+import type { Chat, ChatListItem, ImportChatPayload, StreamChunk } from "@/types";
 
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api";
 
@@ -52,6 +52,18 @@ export async function deleteChat(token: string, chatId: string): Promise<void> {
   if (!res.ok && res.status !== 204) {
     throw new Error(`Failed to delete chat: ${res.status}`);
   }
+}
+
+export async function importChat(
+  token: string,
+  payload: ImportChatPayload
+): Promise<Chat> {
+  const res = await fetch(`${BASE}/chats/import`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify(payload),
+  });
+  return handleResponse<Chat>(res);
 }
 
 // ── Models ───────────────────────────────────────────────────────────────────

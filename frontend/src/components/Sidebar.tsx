@@ -1,7 +1,8 @@
 "use client";
 
 import { useUser } from "@clerk/nextjs";
-import { MessageSquare, Plus, Trash2, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { MessageSquare, MoreHorizontal, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { ChatListItem } from "@/types";
 
@@ -14,6 +15,7 @@ interface SidebarProps {
   onSelectChat: (id: string) => void;
   onNewChat: () => void;
   onDeleteChat: (id: string) => void;
+  onExportChat: (id: string) => void;
   onModelChange: (model: string) => void;
   onSignOut: () => void;
 }
@@ -27,6 +29,7 @@ export default function Sidebar({
   onSelectChat,
   onNewChat,
   onDeleteChat,
+  onExportChat,
   onModelChange,
   onSignOut,
 }: SidebarProps) {
@@ -104,6 +107,7 @@ export default function Sidebar({
               isActive={chat.id === activeChatId}
               onSelect={() => onSelectChat(chat.id)}
               onDelete={() => onDeleteChat(chat.id)}
+              onExport={() => onExportChat(chat.id)}
             />
           ))
         )}
@@ -127,33 +131,83 @@ function ChatRow({
   isActive,
   onSelect,
   onDelete,
+  onExport,
 }: {
   chat: ChatListItem;
   isActive: boolean;
   onSelect: () => void;
   onDelete: () => void;
+  onExport: () => void;
 }) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const handleClick = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [menuOpen]);
+
   return (
     <div
       className={cn(
-        "group flex items-center gap-1.5 rounded-md px-2.5 py-2 cursor-pointer transition-colors",
+        "group relative flex items-center gap-1.5 rounded-md px-2.5 py-2 cursor-pointer transition-colors",
         isActive
           ? "bg-surface-muted text-ink"
           : "text-ink-secondary hover:bg-surface-muted hover:text-ink"
       )}
-      onClick={onSelect}
+      onClick={() => {
+        setMenuOpen(false);
+        onSelect();
+      }}
     >
       <MessageSquare size={13} className="flex-shrink-0 text-ink-ghost" />
       <span className="flex-1 text-xs truncate leading-tight">{chat.title}</span>
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          onDelete();
-        }}
-        className="opacity-0 group-hover:opacity-100 text-ink-ghost hover:text-ink transition-opacity p-0.5 rounded"
-      >
-        <X size={12} />
-      </button>
+      <div ref={menuRef} className="relative">
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            setMenuOpen((prev) => !prev);
+          }}
+          aria-label="Chat actions"
+          className={cn(
+            "text-ink-ghost hover:text-ink transition-opacity p-0.5 rounded",
+            "opacity-0 group-hover:opacity-100",
+            menuOpen && "opacity-100"
+          )}
+        >
+          <MoreHorizontal size={14} />
+        </button>
+        {menuOpen && (
+          <div className="absolute right-0 mt-1 w-36 rounded-md border border-surface-border bg-white shadow-lg z-10">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setMenuOpen(false);
+                onExport();
+              }}
+              className="w-full text-left text-xs px-3 py-2 hover:bg-surface-muted text-ink-secondary"
+            >
+              Export JSON
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setMenuOpen(false);
+                onDelete();
+              }}
+              className="w-full text-left text-xs px-3 py-2 hover:bg-surface-muted text-red-600"
+            >
+              Delete
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

@@ -1,8 +1,8 @@
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Optional, Literal
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 # ── Message schemas ──────────────────────────────────────────────────────────
@@ -37,6 +37,29 @@ class ChatListItem(BaseModel):
 class ChatDetail(ChatListItem):
     user_id: str
     messages: List[MessageResponse] = []
+
+
+# ── Import chat ─────────────────────────────────────────────────────────────
+
+class ImportMessage(BaseModel):
+    role: Literal["user", "assistant"]
+    content: str
+    created_at: Optional[datetime] = None
+
+
+class ImportChat(BaseModel):
+    title: Optional[str] = "Imported Chat"
+    model: Optional[str] = "llama3.2"
+    messages: List[ImportMessage] = Field(default_factory=list)
+
+
+class ImportChatPayload(BaseModel):
+    chat: Optional[ImportChat] = None
+    title: Optional[str] = None
+    model: Optional[str] = None
+    messages: List[ImportMessage] = Field(default_factory=list)
+
+    model_config = {"extra": "ignore"}
 
 
 # ── Send message ─────────────────────────────────────────────────────────────

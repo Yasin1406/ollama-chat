@@ -48,6 +48,11 @@ async def send_message(
         snippet = payload.content.strip()
         chat.title = snippet[:60] + ("…" if len(snippet) > 60 else "")
 
+    # Remember the model actually used for this reply. Imported chats may carry a
+    # model from another machine, and users can switch models at any time, so the
+    # chat must not stay pinned to the model recorded in the exported JSON.
+    model = payload.model or chat.model
+    chat.model = model
     chat.updated_at = datetime.utcnow()
     db.commit()
 
@@ -59,8 +64,6 @@ async def send_message(
         .order_by(Message.created_at)
         .all()
     ]
-
-    model = payload.model or chat.model
 
     async def event_generator():
         collected: list[str] = []

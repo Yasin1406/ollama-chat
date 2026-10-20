@@ -12,6 +12,7 @@ interface ChatWindowProps {
   isLoading: boolean;
   isStreaming: boolean;
   streamingContent: string;
+  errorMessage?: string | null;
   ollamaStatus: "checking" | "online" | "offline";
   onSend: (content: string) => void;
   onImportChat: (file: File) => void;
@@ -23,6 +24,7 @@ export default function ChatWindow({
   isLoading,
   isStreaming,
   streamingContent,
+  errorMessage,
   ollamaStatus,
   onSend,
   onImportChat,
@@ -72,6 +74,13 @@ export default function ChatWindow({
 
   const renderComposer = () => (
     <>
+      {errorMessage && (
+        <p className="text-[11px] text-red-600 mb-2 flex items-start gap-1.5">
+          <span className="flex-shrink-0">⚠️</span>
+          <span className="break-words">{errorMessage}</span>
+        </p>
+      )}
+
       {ollamaStatus === "offline" && (
         <p className="text-[11px] text-amber-600 mb-2 flex items-center gap-1.5">
           <span>⚠️</span>

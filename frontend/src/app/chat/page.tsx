@@ -39,6 +39,7 @@ export default function ChatPage() {
 
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamingContent, setStreamingContent] = useState("");
+  const [streamError, setStreamError] = useState<string | null>(null);
 
   // ── Helpers ────────────────────────────────────────────────────────────────
   const token = useCallback(async () => {
@@ -46,6 +47,33 @@ export default function ChatPage() {
     if (!t) throw new Error("Not authenticated");
     return t;
   }, [getToken]);
+
+  /**
+   * Pick a model that is actually installed locally.
+   *
+   * Imported chats may reference a model from another machine (the one stored in
+   * the exported JSON). Sending that name to Ollama fails when it is not pulled
+   * here, so fall back to the currently selected model (or the first available
+   * one) instead.
+   */
+  const resolveAvailableModel = useCallback(
+    (candidate?: string | null): string => {
+      const name = candidate?.trim();
+      if (name && availableModels.includes(name)) return name;
+      if (availableModels.includes(selectedModel)) return selectedModel;
+      return availableModels[0] ?? name ?? selectedModel;
+    },
+    [availableModels, selectedModel]
+  );
+
+  // Keep the selector in sync with the models Ollama actually reports. Without
+  // this, a chat referencing an uninstalled model would leave `selectedModel`
+  // pointing at it while the <select> visually shows a different (valid) model.
+  useEffect(() => {
+    if (availableModels.length > 0 && !availableModels.includes(selectedModel)) {
+      setSelectedModel(availableModels[0]);
+    }
+  }, [availableModels, selectedModel]);
 
   // ── Load chats + models on mount ───────────────────────────────────────────
   useEffect(() => {
@@ -76,16 +104,22 @@ export default function ChatPage() {
       if (id === activeChatId) return;
       setActiveChatId(id);
       setMessages([]);
+      setStreamError(null);
       setLoadingChat(true);
       try {
         const t = await token();
         const chat: Chat = await fetchChat(t, id);
         setMessages(chat.messages);
+        // Adopt the chat's model when it is installed; otherwise keep using a
+        // valid local model so the conversation can continue.
+        setSelectedModel(resolveAvailableModel(chat.model));
+      } catch (err) {
+        console.error("Failed to fetch chat:", err);
       } finally {
         setLoadingChat(false);
       }
     },
-    [activeChatId, token]
+    [activeChatId, token, resolveAvailableModel]
   );
 
   // ── New chat ───────────────────────────────────────────────────────────────
@@ -96,6 +130,7 @@ export default function ChatPage() {
       setChats((prev) => [chat, ...prev]);
       setActiveChatId(chat.id);
       setMessages([]);
+      setStreamError(null);
     } catch (err) {
       console.error("Failed to create chat:", err);
     }
@@ -171,19 +206,22 @@ export default function ChatPage() {
           | ExportedChatEnvelope
           | ImportChatPayload;
 
-        const base =
+        const base = (
           "chat" in raw && raw.chat && typeof raw.chat === "object"
             ? raw.chat
-            : raw;
+            : raw
+        ) as ImportChatPayload;
 
         const title =
           typeof base.title === "string" && base.title.trim().length > 0
             ? base.title
             : "Imported Chat";
-        const model =
-          typeof base.model === "string" && base.model.trim().length > 0
-            ? base.model
-            : selectedModel;
+        // The exported model may not be installed on this machine. Resolve it
+        // against the local model list so the imported chat keeps working with
+        // whichever model is available here.
+        const model = resolveAvailableModel(
+          typeof base.model === "string" ? base.model : selectedModel
+        );
         const messages = Array.isArray(base.messages)
           ? base.messages
               .map((msg) => ({
@@ -210,18 +248,23 @@ export default function ChatPage() {
         setChats((prev) => [imported, ...prev]);
         setActiveChatId(imported.id);
         setMessages(imported.messages);
-        setSelectedModel(imported.model);
+        setStreamError(null);
+        setSelectedModel(resolveAvailableModel(imported.model));
       } catch (err) {
         console.error("Failed to import chat:", err);
       }
     },
-    [selectedModel, token]
+    [selectedModel, resolveAvailableModel, token]
   );
 
   // ── Send message ───────────────────────────────────────────────────────────
   const handleSend = useCallback(
     async (content: string) => {
       if (!activeChatId || isStreaming) return;
+
+      // Never send a model name that Ollama does not have installed.
+      const model = resolveAvailableModel(selectedModel);
+      if (model !== selectedModel) setSelectedModel(model);
 
       // Optimistically add user message
       const optimisticUser: Message = {
@@ -234,6 +277,7 @@ export default function ChatPage() {
       setMessages((prev) => [...prev, optimisticUser]);
       setIsStreaming(true);
       setStreamingContent("");
+      setStreamError(null);
 
       try {
         const t = await token();
@@ -243,7 +287,7 @@ export default function ChatPage() {
           t,
           activeChatId,
           content,
-          selectedModel,
+          model,
           (chunk) => {
             full += chunk;
             setStreamingContent(full);
@@ -268,17 +312,21 @@ export default function ChatPage() {
           },
           (err) => {
             console.error("Stream error:", err);
+            setStreamError(err);
             setIsStreaming(false);
             setStreamingContent("");
           }
         );
       } catch (err) {
         console.error("Send failed:", err);
+        setStreamError(
+          err instanceof Error ? err.message : "Failed to send message"
+        );
         setIsStreaming(false);
         setStreamingContent("");
       }
     },
-    [activeChatId, isStreaming, selectedModel, token]
+    [activeChatId, isStreaming, resolveAvailableModel, selectedModel, token]
   );
 
   // ── Sign out ───────────────────────────────────────────────────────────────
@@ -320,6 +368,7 @@ export default function ChatPage() {
           isLoading={loadingChat}
           isStreaming={isStreaming}
           streamingContent={streamingContent}
+          errorMessage={streamError}
           ollamaStatus={ollamaStatus}
           onSend={handleSend}
           onImportChat={handleImportChat}

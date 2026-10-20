@@ -3,6 +3,8 @@
 Thumbs.db
 .idea/
 .vscode/
+*.swp
+*.swo
 
 # ---- Logs ----
 *.log
@@ -10,11 +12,14 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+.eslintcache
 
 # ---- Environment / Secrets ----
+# Ignore every env file but keep the checked-in examples.
 .env
-.env.local
-.env.*.local
+.env.*
+!.env.example
+!.env.*.example
 
 # ---- Python (backend) ----
 __pycache__/
@@ -28,9 +33,12 @@ __pycache__/
 .coverage
 .coverage.*
 htmlcov/
+*.egg-info/
+.eggs/
 
 # Virtual environments
 .venv/
+.venv*/
 venv/
 env/
 ENV/
@@ -39,15 +47,17 @@ ENV/
 node_modules/
 .next/
 out/
+build/
 dist/
 .turbo/
+.vercel/
+*.tsbuildinfo
 
 # Optional package manager caches
 .npm/
 .pnpm-store/
 
-# TypeScript build metadata
-*.tsbuildinfo
-
-
-package-lock.json
+# ---- Local data ----
+*.db
+*.sqlite
+*.sqlite3
